@@ -1,0 +1,1 @@
+{"name":"Saladoop Report System","short_name":"Saladoop","description":"AI 데일리 리포트 시스템","start_url":"/saladoop_report/","display":"standalone","background_color":"#ffffff","theme_color":"#4f46e5","lang":"en","scope":"/saladoop_report/","icons":[{"src":"pwa-192x192.png","sizes":"192x192","type":"image/png"},{"src":"pwa-512x512.png","sizes":"512x512","type":"image/png"}]}

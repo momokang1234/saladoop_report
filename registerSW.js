@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/saladoop_report/sw.js', { scope: '/saladoop_report/' })})}
