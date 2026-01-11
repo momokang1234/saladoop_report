@@ -1,0 +1,7 @@
+{
+  "name": "AI Daily Report System",
+  "description": "A smart daily report system for restaurant staff powered by Gemini AI. Capture photos, fill out checklists, and get structured JSON reports automatically.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
