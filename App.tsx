@@ -13,8 +13,8 @@ import {
   ChevronRight,
   User,
   Coffee,
-  Sun,
-  Moon
+  Check,
+  X
 } from 'lucide-react';
 import { auth, googleProvider, db, storage } from './firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -136,7 +136,7 @@ const App: React.FC = () => {
     const querySnapshot = await getDocs(q);
     const history: ReportSchema[] = [];
     querySnapshot.forEach((doc) => {
-      history.push({ id: doc.id, ...doc.data() } as ReportSchema);
+      history.push({ id: doc.id, ...(doc.data() as object) } as ReportSchema);
     });
     setReports(history);
   };
@@ -173,7 +173,6 @@ const App: React.FC = () => {
       const now = new Date();
       const photoUrls: string[] = [];
 
-      // 이미지 스토리지 업로드 최적화 (Firestore는 텍스트만, Storage는 사진)
       for (const [idx, photo] of formData.photos.entries()) {
         if (!photo) continue;
         const storageRef = ref(storage, `reports/${user.uid}/${Date.now()}_${idx}.jpg`);
@@ -218,8 +217,8 @@ const App: React.FC = () => {
   };
 
   const containerVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5, staggerChildren: 0.1 } }
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, staggerChildren: 0.05 } }
   };
 
   const itemVariants = {
@@ -227,44 +226,56 @@ const App: React.FC = () => {
     visible: { opacity: 1, x: 0 }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-mono selection:bg-indigo-100" style={{ fontFamily: "'D2Coding', monospace" }}>
-      {/* Premium Gradient Background */}
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(45%_45%_at_50%_50%,rgba(99,102,241,0.05)_0%,rgba(255,255,255,0)_100%)]" />
-
-      <div className="max-w-md mx-auto px-6 py-12">
-        <header className="mb-12 flex flex-col items-center text-center">
+    return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-indigo-100 relative overflow-x-hidden">
+      <div className="fixed inset-0 bg-dot-pattern opacity-40 pointer-events-none -z-10" />
+      <div className="fixed inset-0 bg-gradient-to-b from-slate-50/80 via-transparent to-slate-50/80 pointer-events-none -z-10" />
+      
+      <div className="max-w-md mx-auto px-6 py-10 relative">
+        <header className="mb-10 text-center relative z-20">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-16 h-16 bg-white shadow-2xl shadow-indigo-100 rounded-[1.5rem] flex items-center justify-center mb-6 border border-slate-100"
+            className="w-16 h-16 bg-white shadow-2xl shadow-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/50 ring-1 ring-slate-100"
           >
             <Coffee className="w-8 h-8 text-indigo-600" />
           </motion.div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 mb-2">SALADOOP</h1>
-          <p className="text-slate-400 text-sm font-bold tracking-widest uppercase">Intelligent Report System</p>
+          <h1 className="text-4xl font-black tracking-tighter text-slate-900 mb-2">SALADOOP</h1>
+          <div className="flex items-center justify-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <p className="text-[10px] font-bold tracking-[0.2em] text-slate-400 uppercase">System Operational</p>
+          </div>
 
           {user && (
-            <div className="mt-8 flex bg-white/50 backdrop-blur-xl p-1.5 rounded-2xl border border-slate-200/60 shadow-sm w-full">
+            <div className="mt-8 mx-4 glass-panel p-1.5 rounded-2xl flex relative z-30">
               <button
                 onClick={() => setViewMode('form')}
-                className={`flex-1 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${viewMode === 'form' || viewMode === 'success' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`flex-1 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 relative z-10 ${viewMode === 'form' || viewMode === 'success' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
               >
-                <ClipboardCheck className="w-4 h-4" /> 작성
+                {(viewMode === 'form' || viewMode === 'success') && (
+                  <motion.div layoutId="nav-bg" className="absolute inset-0 bg-white shadow-sm rounded-xl border border-slate-100" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
+                )}
+                <span className="relative z-10 flex items-center gap-2"><ClipboardCheck className="w-4 h-4" /> 작성</span>
               </button>
               {user.email === 'daviidkang@gmail.com' && (
                 <button
                   onClick={() => setViewMode('history')}
-                  className={`flex-1 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${viewMode === 'history' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`flex-1 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 relative z-10 ${viewMode === 'history' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
                 >
-                  <History className="w-4 h-4" /> 관리자 페이지
+                  {viewMode === 'history' && (
+                    <motion.div layoutId="nav-bg" className="absolute inset-0 bg-white shadow-sm rounded-xl border border-slate-100" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
+                  )}
+                  <span className="relative z-10 flex items-center gap-2"><History className="w-4 h-4" /> 기록</span>
                 </button>
               )}
             </div>
           )}
         </header>
 
-        <main>
+        <main className="relative z-10">
           <AnimatePresence mode="wait">
             {viewMode === 'auth' && (
               <motion.div
@@ -273,17 +284,17 @@ const App: React.FC = () => {
                 initial="hidden"
                 animate="visible"
                 exit="hidden"
-                className="bg-white/70 backdrop-blur-2xl p-10 rounded-[3rem] border border-white shadow-2xl shadow-indigo-100/50 text-center"
+                className="glass-panel p-10 rounded-[3rem] text-center"
               >
                 <div className="mb-8">
-                  <h2 className="text-xl font-black text-slate-900 mb-3">Welcome Back</h2>
-                  <p className="text-slate-400 text-sm font-medium leading-relaxed">진행하시려면 Google 계정으로<br />로그인이 필요합니다.</p>
+                  <h2 className="text-xl font-black text-slate-900 mb-3 tracking-tight">Access Required</h2>
+                  <p className="text-slate-400 text-sm font-medium leading-relaxed">Please authenticate using your<br />Google Workspace account.</p>
                 </div>
                 <button
                   onClick={handleLogin}
-                  className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black flex items-center justify-center gap-3 active:scale-[0.98] transition-all shadow-xl shadow-slate-200"
+                  className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black flex items-center justify-center gap-3 active:scale-[0.98] transition-all shadow-xl shadow-slate-200 hover:shadow-2xl hover:-translate-y-1"
                 >
-                  <LogIn className="w-5 h-5" /> Google 로그인
+                  <LogIn className="w-5 h-5" /> Google Login
                 </button>
               </motion.div>
             )}
@@ -296,54 +307,79 @@ const App: React.FC = () => {
                 animate="visible"
                 exit="hidden"
                 onSubmit={handleSubmit}
-                className="space-y-8"
+                className="space-y-6"
               >
-                {/* Section: Reporter */}
-                <section className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-                  <header className="flex items-center gap-2 mb-6">
-                    <User className="w-4 h-4 text-indigo-500" />
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">담당자 및 근무 시간</label>
-                  </header>
-                  <div className="mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
-                    <img src={user.photoURL || ''} alt="" className="w-10 h-10 rounded-full border-2 border-white shadow-sm" />
-                    <div>
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">작성자</div>
-                      <div className="text-sm font-black text-slate-900">{user.displayName}</div>
+                <div className="glass-panel p-6 rounded-[2rem] flex items-center gap-4">
+                  <div className="relative">
+                    <img src={user.photoURL || ''} alt="" className="w-12 h-12 rounded-full border-2 border-white shadow-md" />
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" />
                     </div>
                   </div>
-                  <div className="flex gap-2 p-1.5 bg-slate-50 rounded-2xl">
-                    {Object.values(ShiftStage).map((stage) => (
-                      <button
-                        key={stage} type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, shiftStage: stage, checklist: {} }))}
-                        className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${formData.shiftStage === stage ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
-                        {stage}
-                      </button>
-                    ))}
+                  <div>
+                    <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-0.5">Operator</div>
+                    <div className="text-lg font-black text-slate-900 tracking-tight">{user.displayName}</div>
                   </div>
+                </div>
+
+                <section className="space-y-3">
+                   <div className="flex items-center gap-2 px-2">
+                     <User className="w-4 h-4 text-slate-400" />
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Phase</label>
+                   </div>
+                   <div className="glass-panel p-2 rounded-[2rem] flex gap-1">
+                      {Object.values(ShiftStage).map((stage) => {
+                        const isSelected = formData.shiftStage === stage;
+                        return (
+                          <button
+                            key={stage}
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, shiftStage: stage, checklist: {} }))}
+                            className={`flex-1 py-4 rounded-[1.5rem] text-xs font-black transition-all relative ${isSelected ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                          >
+                            {isSelected && (
+                              <motion.div
+                                layoutId="stage-active"
+                                className="absolute inset-0 bg-slate-900 shadow-lg rounded-[1.5rem]"
+                                transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                              />
+                            )}
+                            <span className="relative z-10">{stage}</span>
+                          </button>
+                        );
+                      })}
+                   </div>
                 </section>
 
-                {/* Section: Photos */}
-                <section className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-                  <header className="flex items-center gap-2 mb-6">
-                    <Camera className="w-4 h-4 text-indigo-500" />
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">현장 기록 (고화질)</label>
-                  </header>
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2 px-2">
+                    <Camera className="w-4 h-4 text-slate-400" />
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Visual Evidence</label>
+                  </div>
                   <div className={`grid ${formData.shiftStage === ShiftStage.MIDDLE ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
                     {Array.from({ length: formData.shiftStage === ShiftStage.MIDDLE ? 4 : 1 }).map((_, i) => (
                       <motion.div
                         key={i}
+                        whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => fileInputRefs.current[i]?.click()}
-                        className="relative aspect-video rounded-[1.5rem] bg-slate-50 border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden hover:bg-slate-100 hover:border-indigo-300 transition-all"
+                        className="group relative aspect-video rounded-[1.5rem] bg-white border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all hover:border-indigo-400 hover:bg-indigo-50/10 shadow-sm"
                       >
                         {formData.photos[i] ? (
-                          <img src={formData.photos[i]} alt="Preview" className="w-full h-full object-cover" />
+                          <>
+                            <img src={formData.photos[i]} alt="Preview" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                               <div className="bg-white/90 p-2 rounded-full shadow-lg backdrop-blur-md">
+                                 <Camera className="w-5 h-5 text-indigo-600" />
+                               </div>
+                            </div>
+                          </>
                         ) : (
                           <>
-                            <Camera className="w-6 h-6 text-slate-200 mb-2" />
-                            <span className="text-[10px] text-slate-400 font-bold">이미지 추가</span>
+                            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                              <Camera className="w-6 h-6 text-slate-300 group-hover:text-indigo-400 transition-colors" />
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider group-hover:text-indigo-400 transition-colors">Add Photo</span>
                           </>
                         )}
                         <input type="file" ref={el => { fileInputRefs.current[i] = el; }} onChange={(e) => handleFileChange(e, i)} accept="image/*" capture="environment" className="hidden" />
@@ -352,65 +388,90 @@ const App: React.FC = () => {
                   </div>
                 </section>
 
-                {/* Section: Checklist */}
-                <section className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
-                  <header className="flex items-center gap-2 mb-6">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">필수 체크리스트</label>
-                  </header>
-                  <div className="space-y-3">
-                    {CHECKLIST_ITEMS[formData.shiftStage].map((item) => (
-                      <motion.label
-                        key={item.id}
-                        variants={itemVariants}
-                        className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border ${formData.checklist[item.id] ? 'bg-emerald-50/50 border-emerald-100' : 'bg-slate-50/50 border-transparent hover:border-slate-100'}`}
-                      >
-                        <span className={`text-sm font-bold ${formData.checklist[item.id] ? 'text-emerald-700' : 'text-slate-600'}`}>{item.label}</span>
-                        <input
-                          type="checkbox"
-                          checked={!!formData.checklist[item.id]}
-                          onChange={() => setFormData(prev => ({ ...prev, checklist: { ...prev.checklist, [item.id]: !prev.checklist[item.id] } }))}
-                          className="w-5 h-5 rounded-full text-emerald-600 border-slate-200 focus:ring-0"
-                        />
-                      </motion.label>
-                    ))}
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2 px-2">
+                    <CheckCircle2 className="w-4 h-4 text-slate-400" />
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Check</label>
+                  </div>
+                  <div className="grid gap-2">
+                    {CHECKLIST_ITEMS[formData.shiftStage].map((item) => {
+                      const isChecked = !!formData.checklist[item.id];
+                      return (
+                        <motion.label
+                          key={item.id}
+                          layout
+                          initial={false}
+                          animate={{ 
+                            backgroundColor: isChecked ? "rgba(16, 185, 129, 0.05)" : "rgba(255, 255, 255, 0.6)",
+                            borderColor: isChecked ? "rgba(16, 185, 129, 0.2)" : "transparent"
+                          }}
+                          className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border shadow-sm group relative overflow-hidden`}
+                        >
+                          <div className={`absolute inset-0 bg-emerald-500/5 transition-transform duration-500 ${isChecked ? 'translate-x-0' : '-translate-x-full'}`} />
+                          
+                          <span className={`text-sm font-bold relative z-10 transition-colors ${isChecked ? 'text-emerald-700' : 'text-slate-600 group-hover:text-slate-900'}`}>
+                            {item.label}
+                          </span>
+                          
+                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all relative z-10 ${isChecked ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-200 group-hover:border-slate-300'}`}>
+                            <Check className={`w-3.5 h-3.5 text-white transition-all ${isChecked ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} strokeWidth={4} />
+                          </div>
+                          
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => setFormData(prev => ({ ...prev, checklist: { ...prev.checklist, [item.id]: !prev.checklist[item.id] } }))}
+                            className="hidden"
+                          />
+                        </motion.label>
+                      );
+                    })}
                   </div>
                 </section>
 
-                {/* Section: Report Content */}
-                <section className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 space-y-4">
-                  <header className="flex items-center gap-2 mb-2">
-                    <AlertCircle className="w-4 h-4 text-amber-500" />
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">업무 요약 및 전달</label>
-                  </header>
-                  <input
-                    name="summaryForBoss"
-                    value={formData.summaryForBoss}
-                    onChange={handleInputChange}
-                    placeholder="사장님께 드릴 한 줄 요약"
-                    className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-6 py-4 text-sm font-bold outline-none transition-all placeholder:text-slate-300"
-                  />
-                  <textarea
-                    name="issues"
-                    value={formData.issues}
-                    onChange={handleInputChange}
-                    rows={4}
-                    placeholder="추가 특이사항 (선택)"
-                    className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-6 py-4 text-sm font-bold outline-none resize-none transition-all placeholder:text-slate-300"
-                  />
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2 px-2">
+                    <AlertCircle className="w-4 h-4 text-slate-400" />
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Summary</label>
+                  </div>
+                  <div className="glass-panel p-2 rounded-[2rem] space-y-2">
+                    <div className="relative group">
+                       <input
+                        name="summaryForBoss"
+                        value={formData.summaryForBoss}
+                        onChange={handleInputChange}
+                        placeholder="Executive Summary"
+                        className="w-full bg-slate-50/50 border-none focus:ring-2 focus:ring-indigo-500/20 rounded-2xl px-6 py-4 text-sm font-bold outline-none transition-all placeholder:text-slate-300"
+                      />
+                    </div>
+                    <textarea
+                      name="issues"
+                      value={formData.issues}
+                      onChange={handleInputChange}
+                      rows={3}
+                      placeholder="Additional Notes / Issues"
+                      className="w-full bg-slate-50/50 border-none focus:ring-2 focus:ring-indigo-500/20 rounded-2xl px-6 py-4 text-sm font-bold outline-none resize-none transition-all placeholder:text-slate-300"
+                    />
+                  </div>
                 </section>
 
-                <button
-                  type="submit"
-                  disabled={isSending}
-                  className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-lg shadow-2xl shadow-indigo-200 flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-70"
-                >
-                  {isSending ? (
-                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full" />
-                  ) : (
-                    <>보고서 제출하기 <Send className="w-5 h-5" /></>
-                  )}
-                </button>
+                <div className="pt-4 pb-12">
+                  <button
+                    type="submit"
+                    disabled={isSending}
+                    className="group w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-lg shadow-2xl shadow-indigo-200 hover:shadow-indigo-300 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-70 flex items-center justify-center relative overflow-hidden"
+                  >
+                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:animate-[shimmer_1.5s_infinite]" />
+                    {isSending ? (
+                      <div className="flex items-center gap-3">
+                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full" />
+                        <span className="text-sm font-bold opacity-80">Processing...</span>
+                      </div>
+                    ) : (
+                      <span className="flex items-center gap-3">Submit Report <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></span>
+                    )}
+                  </button>
+                </div>
               </motion.form>
             )}
 
@@ -419,18 +480,24 @@ const App: React.FC = () => {
                 key="success"
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-white p-12 rounded-[3.5rem] shadow-2xl shadow-indigo-100 border border-slate-100 text-center"
+                className="glass-panel p-12 rounded-[3.5rem] text-center border-white/60"
               >
-                <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-8">
-                  <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+                <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring" }}
+                  >
+                    <CheckCircle2 className="w-12 h-12 text-emerald-600" />
+                  </motion.div>
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 mb-2">전송 성공!</h2>
-                <p className="text-slate-400 text-sm font-medium mb-10 leading-relaxed">데이터가 안정적으로 저장되었습니다.<br />슬랙 자동 발송이 진행 중입니다.</p>
+                <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Report Sent</h2>
+                <p className="text-slate-400 text-sm font-medium mb-10 leading-relaxed">Your report has been successfully logged<br />and synchronized with Slack.</p>
                 <button
                   onClick={() => setViewMode('form')}
-                  className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg shadow-lg hover:bg-indigo-700 transition-all active:scale-[0.98]"
+                  className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl transition-all active:scale-[0.98]"
                 >
-                  확인
+                  Return to Dashboard
                 </button>
               </motion.div>
             )}
@@ -441,58 +508,56 @@ const App: React.FC = () => {
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
-                className="space-y-6"
+                className="space-y-6 pb-12"
               >
-                <div className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-50 flex flex-col items-center gap-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">날짜 선택</label>
+                <div className="glass-panel p-6 rounded-[2rem] flex flex-col items-center gap-3 sticky top-0 z-20 backdrop-blur-xl">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date Selection</label>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-slate-50 border-none rounded-xl px-4 py-2 font-black text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
+                    className="bg-slate-100 border-none rounded-xl px-6 py-3 font-black text-slate-700 outline-none focus:ring-2 focus:ring-indigo-200 text-center w-full"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-4">
                   {[ShiftStage.OPEN, ShiftStage.MIDDLE, ShiftStage.CLOSE].map((stage) => {
                     const stageReports = reports.filter(r => {
-                      // Normalize dates for comparison (simple string check)
-                      // r.date is usually "2024. 05. 20." format from ko-KR locale
-                      // selectedDate is "2024-05-20"
                       const reportDate = r.date.replace(/\. /g, '-').replace('.', '');
                       return reportDate === selectedDate && r.shift_stage === stage;
                     });
 
                     return (
-                      <div key={stage} className="space-y-3">
-                        <div className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stage}</div>
+                      <div key={stage} className="space-y-2">
+                        <div className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                          {stage}
+                        </div>
                         
                         {stageReports.length > 0 ? (
                           stageReports.map((report) => (
                             <motion.div
                               key={report.id}
-                              initial={{ scale: 0.9, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              className="bg-white p-4 rounded-2xl shadow-md border-2 border-indigo-50 hover:border-indigo-200 transition-all cursor-pointer relative overflow-hidden group"
+                              whileHover={{ scale: 1.02, y: -2 }}
+                              className="bg-white/80 p-5 rounded-[1.5rem] shadow-sm border border-slate-100 cursor-pointer relative overflow-hidden group"
                             >
-                              <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <ClipboardCheck className="w-8 h-8 text-indigo-600" />
+                              <div className="flex justify-between items-start mb-2">
+                                <h4 className="text-sm font-black text-slate-900">{report.reporter_name}</h4>
+                                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">{report.timestamp}</span>
                               </div>
-                              <div className="relative z-10">
-                                <h4 className="text-xs font-black text-slate-900 mb-1">{report.reporter_name}</h4>
-                                <p className="text-[10px] text-slate-400 font-bold">{report.timestamp}</p>
-                                <div className="mt-2 text-[10px] text-slate-500 font-medium line-clamp-2">
-                                  {report.summary_for_boss}
+                              <p className="text-xs text-slate-600 font-medium leading-relaxed border-l-2 border-indigo-200 pl-3">
+                                {report.summary_for_boss}
+                              </p>
+                              {report.has_photo && (
+                                <div className="absolute bottom-4 right-4 opacity-50">
+                                  <Camera className="w-4 h-4 text-slate-400" />
                                 </div>
-                              </div>
+                              )}
                             </motion.div>
                           ))
                         ) : (
-                          <div className="h-24 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center bg-slate-50/50">
-                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mb-1">
-                              <Coffee className="w-3 h-3 text-slate-300" />
-                            </div>
-                            <span className="text-[10px] text-slate-300 font-bold">대기 중</span>
+                          <div className="h-20 rounded-[1.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center bg-slate-50/50">
+                            <span className="text-[10px] text-slate-300 font-bold">No Data</span>
                           </div>
                         )}
                       </div>
@@ -505,13 +570,9 @@ const App: React.FC = () => {
         </main>
 
         {user && (
-          <footer className="mt-16 flex flex-col items-center">
-            <div className="flex items-center gap-4 mb-4">
-              <img src={user.photoURL || ''} alt="profile" className="w-8 h-8 rounded-full border border-slate-200" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{user.displayName} 로그인 중</span>
-            </div>
-            <button onClick={handleLogout} className="text-[10px] font-black text-slate-400 hover:text-rose-500 transition-colors flex items-center gap-1">
-              <LogOut className="w-3 h-3" /> 로그아웃
+          <footer className="mt-8 flex flex-col items-center relative z-10">
+            <button onClick={handleLogout} className="px-6 py-2 rounded-full bg-white/50 border border-slate-200 text-[10px] font-black text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-all flex items-center gap-2">
+              <LogOut className="w-3 h-3" /> Terminate Session
             </button>
           </footer>
         )}
