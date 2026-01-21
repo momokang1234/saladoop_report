@@ -228,7 +228,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-mono selection:bg-indigo-100" style={{ fontFamily: "'D2Coding', monospace" }}>
       {/* Premium Gradient Background */}
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(45%_45%_at_50%_50%,rgba(99,102,241,0.05)_0%,rgba(255,255,255,0)_100%)]" />
 
