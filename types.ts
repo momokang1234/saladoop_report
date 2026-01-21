@@ -17,6 +17,8 @@ export interface ReportSchema {
   date: string;
   timestamp: string;
   reporter_name: string;
+  reporter_email?: string; // 추가: 지메일 정보
+  reporter_uid?: string;   // 추가: 고유 식별자
   shift_stage: string;
   has_photo: boolean;
   photos: string[];
@@ -27,7 +29,6 @@ export interface ReportSchema {
 }
 
 export type FormData = {
-  reporterName: ReporterName;
   shiftStage: ShiftStage;
   busyLevel: BusyLevel;
   issues: string;
@@ -36,4 +37,4 @@ export type FormData = {
   photos: string[];
 };
 
-export type ViewMode = 'form' | 'history' | 'management' | 'success';
+export type ViewMode = 'form' | 'history' | 'management' | 'success' | 'auth';
