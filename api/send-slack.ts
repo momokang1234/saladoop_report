@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const data = req.body;
     
-    const blocks = [
+    const blocks: any[] = [
       {
         type: "header",
         text: {
@@ -69,13 +69,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*📷 현장 사진 (${data.photos.length}장)*\n사진은 앱 내 히스토리에서 고화질로 확인 가능합니다.`
+          text: `*📷 현장 사진 (${data.photos.length}장)*`
         }
       });
       
-      // Slack usually requires public URLs for images. 
-      // Since these might be Firebase Storage authenticated URLs, we just show a link or count.
-      // If public, we could use 'image' block. For now, kept simple.
+      data.photos.forEach((photoUrl: string, index: number) => {
+        blocks.push({
+          type: "image",
+          image_url: photoUrl,
+          alt_text: `현장 사진 ${index + 1}`
+        });
+      });
     }
 
     const slackMessage = { blocks };

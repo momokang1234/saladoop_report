@@ -117,11 +117,20 @@ const App: React.FC = () => {
   const handleLogout = () => signOut(auth);
 
   const fetchHistory = async (uid: string) => {
-    const q = query(
-      collection(db, "reports"),
-      where("reporter_uid", "==", uid),
-      orderBy("createdAt", "desc")
-    );
+    let q;
+    if (auth.currentUser?.email === 'daviidkang@gmail.com') {
+       q = query(
+        collection(db, "reports"),
+        orderBy("createdAt", "desc")
+      );
+    } else {
+      q = query(
+        collection(db, "reports"),
+        where("reporter_uid", "==", uid),
+        orderBy("createdAt", "desc")
+      );
+    }
+
     const querySnapshot = await getDocs(q);
     const history: ReportSchema[] = [];
     querySnapshot.forEach((doc) => {
@@ -241,12 +250,14 @@ const App: React.FC = () => {
               >
                 <ClipboardCheck className="w-4 h-4" /> 작성
               </button>
-              <button
-                onClick={() => setViewMode('history')}
-                className={`flex-1 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${viewMode === 'history' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                <History className="w-4 h-4" /> 기록
-              </button>
+              {user.email === 'daviidkang@gmail.com' && (
+                <button
+                  onClick={() => setViewMode('history')}
+                  className={`flex-1 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${viewMode === 'history' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  <History className="w-4 h-4" /> 관리자 페이지
+                </button>
+              )}
             </div>
           )}
         </header>
