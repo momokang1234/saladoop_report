@@ -51,6 +51,21 @@ const CHECKLIST_ITEMS: Record<ShiftStage, { id: string; label: string }[]> = {
   ],
 };
 
+const PHOTO_GUIDES: Record<ShiftStage, string[]> = {
+  [ShiftStage.OPEN]: [
+    '📸 테이블 전체 + 식수 Self-zone'
+  ],
+  [ShiftStage.MIDDLE]: [
+    '📸 메인 유리문 냉장고',
+    '📸 토핑 냉장고 내부 (우측 문 2개 개방)',
+    '📸 업무 리스트 체크 완료본'
+  ],
+  [ShiftStage.CLOSE]: [
+    '📸 가스 차단기 잠금 (초록불)',
+    '📸 토핑 냉장고 작업대 전체'
+  ]
+};
+
 const compressImage = (base64Str: string): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -171,14 +186,17 @@ const App: React.FC = () => {
     setIsSending(true);
     try {
       const now = new Date();
-      const photoUrls: string[] = [];
+      const photoData: { url: string; label: string }[] = [];
 
       for (const [idx, photo] of formData.photos.entries()) {
         if (!photo) continue;
         const storageRef = ref(storage, `reports/${user.uid}/${Date.now()}_${idx}.jpg`);
         await uploadString(storageRef, photo, 'data_url');
         const url = await getDownloadURL(storageRef);
-        photoUrls.push(url);
+        photoData.push({
+          url,
+          label: PHOTO_GUIDES[formData.shiftStage][idx] || `사진 ${idx + 1}`
+        });
       }
 
       const reportData = {
@@ -190,8 +208,8 @@ const App: React.FC = () => {
         summary_for_boss: formData.summaryForBoss,
         issues: formData.issues,
         checklist: formData.checklist,
-        photos: photoUrls,
-        has_photo: photoUrls.length > 0,
+        photos: photoData,
+        has_photo: photoData.length > 0,
         date: now.toLocaleDateString('ko-KR'),
         timestamp: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
         createdAt: Timestamp.now()
@@ -356,8 +374,8 @@ const App: React.FC = () => {
                     <Camera className="w-4 h-4 text-slate-400" />
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Visual Evidence</label>
                   </div>
-                  <div className={`grid ${formData.shiftStage === ShiftStage.MIDDLE ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
-                    {Array.from({ length: formData.shiftStage === ShiftStage.MIDDLE ? 4 : 1 }).map((_, i) => (
+                  <div className={`grid grid-cols-1 gap-3`}>
+                    {PHOTO_GUIDES[formData.shiftStage].map((guideLabel, i) => (
                       <motion.div
                         key={i}
                         whileHover={{ scale: 1.02 }}
@@ -373,13 +391,16 @@ const App: React.FC = () => {
                                  <Camera className="w-5 h-5 text-indigo-600" />
                                </div>
                             </div>
+                            <div className="absolute bottom-0 inset-x-0 bg-black/50 p-2 text-center">
+                              <span className="text-[10px] text-white font-bold">{guideLabel}</span>
+                            </div>
                           </>
                         ) : (
                           <>
                             <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
                               <Camera className="w-6 h-6 text-slate-300 group-hover:text-indigo-400 transition-colors" />
                             </div>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider group-hover:text-indigo-400 transition-colors">Add Photo</span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider group-hover:text-indigo-400 transition-colors text-center px-4">{guideLabel}</span>
                           </>
                         )}
                         <input type="file" ref={el => { fileInputRefs.current[i] = el; }} onChange={(e) => handleFileChange(e, i)} accept="image/*" capture="environment" className="hidden" />

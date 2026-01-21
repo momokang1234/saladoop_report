@@ -73,11 +73,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       });
       
-      data.photos.forEach((photoUrl: string, index: number) => {
+      data.photos.forEach((photo: { url: string; label: string }, index: number) => {
         blocks.push({
           type: "image",
-          image_url: photoUrl,
-          alt_text: `현장 사진 ${index + 1}`
+          image_url: photo.url,
+          alt_text: photo.label,
+          title: {
+            type: "plain_text",
+            text: photo.label,
+            emoji: true
+          }
         });
       });
     }
