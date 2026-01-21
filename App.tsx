@@ -90,7 +90,9 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('auth');
   const [reports, setReports] = useState<ReportSchema[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -439,29 +441,64 @@ const App: React.FC = () => {
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
-                className="space-y-4"
+                className="space-y-6"
               >
-                {reports.map((report) => (
-                  <motion.div
-                    key={report.id}
-                    variants={itemVariants}
-                    className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-50 flex items-center justify-between hover:shadow-xl transition-all group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
-                        <ClipboardCheck className="w-6 h-6 text-slate-300 group-hover:text-indigo-500" />
+                <div className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-50 flex flex-col items-center gap-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">날짜 선택</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="bg-slate-50 border-none rounded-xl px-4 py-2 font-black text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[ShiftStage.OPEN, ShiftStage.MIDDLE, ShiftStage.CLOSE].map((stage) => {
+                    const stageReports = reports.filter(r => {
+                      // Normalize dates for comparison (simple string check)
+                      // r.date is usually "2024. 05. 20." format from ko-KR locale
+                      // selectedDate is "2024-05-20"
+                      const reportDate = r.date.replace(/\. /g, '-').replace('.', '');
+                      return reportDate === selectedDate && r.shift_stage === stage;
+                    });
+
+                    return (
+                      <div key={stage} className="space-y-3">
+                        <div className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stage}</div>
+                        
+                        {stageReports.length > 0 ? (
+                          stageReports.map((report) => (
+                            <motion.div
+                              key={report.id}
+                              initial={{ scale: 0.9, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              className="bg-white p-4 rounded-2xl shadow-md border-2 border-indigo-50 hover:border-indigo-200 transition-all cursor-pointer relative overflow-hidden group"
+                            >
+                              <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <ClipboardCheck className="w-8 h-8 text-indigo-600" />
+                              </div>
+                              <div className="relative z-10">
+                                <h4 className="text-xs font-black text-slate-900 mb-1">{report.reporter_name}</h4>
+                                <p className="text-[10px] text-slate-400 font-bold">{report.timestamp}</p>
+                                <div className="mt-2 text-[10px] text-slate-500 font-medium line-clamp-2">
+                                  {report.summary_for_boss}
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))
+                        ) : (
+                          <div className="h-24 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center bg-slate-50/50">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mb-1">
+                              <Coffee className="w-3 h-3 text-slate-300" />
+                            </div>
+                            <span className="text-[10px] text-slate-300 font-bold">대기 중</span>
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <h4 className="text-sm font-black text-slate-900">{report.reporter_name} - {report.shift_stage}</h4>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{report.date} {report.timestamp}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-slate-200 group-hover:text-indigo-300 transition-all" />
-                  </motion.div>
-                ))}
-                {reports.length === 0 && (
-                  <div className="text-center py-20 text-slate-300 font-black">기록된 보고서가 없습니다.</div>
-                )}
+                    );
+                  })}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
