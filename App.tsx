@@ -67,27 +67,35 @@ const PHOTO_GUIDES: Record<ShiftStage, string[]> = {
 };
 
 const compressImage = (base64Str: string): Promise<string> => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.src = base64Str;
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 1200;
-      let width = img.width;
-      let height = img.height;
-      if (width > MAX_WIDTH) {
-        height *= MAX_WIDTH / width;
-        width = MAX_WIDTH;
+      try {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200;
+        let width = img.width;
+        let height = img.height;
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, width, height);
+        }
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        resolve(compressedDataUrl);
+      } catch (error) {
+        reject(new Error('Failed to compress image: ' + (error instanceof Error ? error.message : String(error))));
       }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, width, height);
-      }
-      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => {
+      reject(new Error('Failed to load image for compression'));
     };
   });
 };
@@ -166,10 +174,24 @@ const App: React.FC = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const compressed = await compressImage(reader.result as string);
-        const newPhotos = [...formData.photos];
-        newPhotos[index] = compressed;
-        setFormData(prev => ({ ...prev, photos: newPhotos }));
+        try {
+          const fileReaderResult = reader.result;
+          if (typeof fileReaderResult !== 'string') {
+            console.error('FileReader result is not a string:', typeof fileReaderResult);
+            alert('이미지 처리 중 오류가 발생했습니다. 다시 시도해 주세요.');
+            return;
+          }
+
+          const compressed = await compressImage(fileReaderResult);
+          setFormData(prev => {
+            const newPhotos = [...prev.photos];
+            newPhotos[index] = compressed;
+            return { ...prev, photos: newPhotos };
+          });
+        } catch (error) {
+          console.error('Error processing image:', error);
+          alert('이미지 처리 중 오류가 발생했습니다. 다른 이미지를 시도해 주세요.');
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -352,7 +374,7 @@ const App: React.FC = () => {
                           <button
                             key={stage}
                             type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, shiftStage: stage, checklist: {} }))}
+                            onClick={() => setFormData(prev => ({ ...prev, shiftStage: stage, checklist: {}, photos: [] }))}
                             className={`flex-1 py-4 rounded-[1.5rem] text-xs font-black transition-all relative ${isSelected ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}
                           >
                             {isSelected && (
