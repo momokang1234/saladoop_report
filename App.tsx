@@ -258,6 +258,44 @@ const App: React.FC = () => {
     }
   };
 
+  const [slackTestStatus, setSlackTestStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+
+  const handleSlackTest = async () => {
+    setSlackTestStatus('sending');
+    try {
+      const now = new Date();
+      const testData = {
+        reporter_name: user?.displayName || '테스트',
+        reporter_email: user?.email || '',
+        shift_stage: '테스트',
+        busy_level: '보통',
+        summary_for_boss: '슬랙 웹훅 연동 테스트입니다. 이 메시지가 보이면 정상 작동 중입니다.',
+        issues: 'Netlify 배포 후 슬랙 연동 테스트 진행',
+        checklist: {},
+        photos: [],
+        has_photo: false,
+        date: now.toLocaleDateString('ko-KR'),
+        timestamp: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      const res = await fetch('/api/send-slack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testData),
+      });
+
+      if (res.ok) {
+        setSlackTestStatus('success');
+      } else {
+        throw new Error(`HTTP ${res.status}`);
+      }
+    } catch (err) {
+      console.error('Slack test error:', err);
+      setSlackTestStatus('error');
+    }
+    setTimeout(() => setSlackTestStatus('idle'), 3000);
+  };
+
   const containerVariants = {
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.4, staggerChildren: 0.05 } }
@@ -696,7 +734,24 @@ const App: React.FC = () => {
         </main>
 
         {user && (
-          <footer className="mt-8 flex flex-col items-center relative z-10">
+          <footer className="mt-8 flex flex-col items-center gap-3 relative z-10">
+            <button
+              onClick={handleSlackTest}
+              disabled={slackTestStatus === 'sending'}
+              className={`px-6 py-2 rounded-full border text-[10px] font-black transition-all flex items-center gap-2 ${
+                slackTestStatus === 'success'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                  : slackTestStatus === 'error'
+                    ? 'bg-rose-50 border-rose-200 text-rose-600'
+                    : 'bg-white/50 border-slate-200 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 hover:border-indigo-100'
+              }`}
+            >
+              <Send className="w-3 h-3" />
+              {slackTestStatus === 'sending' ? '발송 중...'
+                : slackTestStatus === 'success' ? '발송 완료! 슬랙 확인'
+                : slackTestStatus === 'error' ? '발송 실패'
+                : '슬랙 테스트 메시지 발송'}
+            </button>
             <button onClick={handleLogout} className="px-6 py-2 rounded-full bg-white/50 border border-slate-200 text-[10px] font-black text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-100 transition-all flex items-center gap-2">
               <LogOut className="w-3 h-3" /> Terminate Session
             </button>
