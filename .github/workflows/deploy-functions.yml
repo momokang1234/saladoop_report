@@ -1,0 +1,41 @@
+name: Deploy Firebase Functions
+
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+    paths:
+      - 'functions/**'
+      - '.github/workflows/deploy-functions.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install functions dependencies
+        run: cd functions && npm ci
+
+      - name: Create functions .env
+        run: |
+          cat > functions/.env << EOF
+          GMAIL_EMAIL=${{ secrets.GMAIL_EMAIL }}
+          GMAIL_PASSWORD=${{ secrets.GMAIL_PASSWORD }}
+          BOSS_EMAIL=${{ secrets.BOSS_EMAIL }}
+          EOF
+
+      - name: Build functions
+        run: cd functions && npm run build
+
+      - name: Deploy to Firebase
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only functions
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

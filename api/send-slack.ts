@@ -64,6 +64,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     ];
 
+    if (data.checklist_details && data.checklist_details.length > 0) {
+      const checklistLines = data.checklist_details
+        .map((item: { label: string; checked: boolean }) =>
+          item.checked ? `✅  ${item.label}` : `⬜  ${item.label}`
+        )
+        .join('\n');
+
+      blocks.push(
+        { type: "divider" },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*📋 체크리스트 (${data.checklist_details.filter((i: { checked: boolean }) => i.checked).length}/${data.checklist_details.length}):*\n${checklistLines}`
+          }
+        }
+      );
+    }
+
     if (data.photos && data.photos.length > 0) {
       blocks.push({
         type: "section",

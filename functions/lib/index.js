@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendReportEmail = void 0;
+exports.sendReportNotification = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
@@ -8,6 +8,7 @@ admin.initializeApp();
 const gmailEmail = process.env.GMAIL_EMAIL;
 const gmailPassword = process.env.GMAIL_PASSWORD;
 const bossEmail = process.env.BOSS_EMAIL || "daviidkang@gmail.com";
+const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
 const mailTransport = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -15,6 +16,76 @@ const mailTransport = nodemailer.createTransport({
         pass: gmailPassword,
     },
 });
+/**
+ * Slack Block Kit 메시지 생성
+ */
+const sendSlackNotification = async (data) => {
+    if (!slackWebhookUrl) {
+        functions.logger.warn('SLACK_WEBHOOK_URL not configured, skipping Slack notification');
+        return;
+    }
+    const blocks = [
+        {
+            type: "header",
+            text: {
+                type: "plain_text",
+                text: `📝 Saladoop 일일 업무 보고 - ${data.shift_stage || '시간 미정'}`,
+                emoji: true,
+            },
+        },
+        {
+            type: "section",
+            fields: [
+                { type: "mrkdwn", text: `*작성자:*\n${data.reporter_name || '알 수 없음'}` },
+                { type: "mrkdwn", text: `*작성 시간:*\n${data.date} ${data.timestamp}` },
+            ],
+        },
+        {
+            type: "section",
+            text: {
+                type: "mrkdwn",
+                text: `*📢 사장님 한 줄 요약:*\n> ${data.summary_for_boss || '내용 없음'}`,
+            },
+        },
+        {
+            type: "section",
+            text: {
+                type: "mrkdwn",
+                text: `*✅ 특이사항 및 업무 상세:*\n${data.issues || '특이사항 없음'}`,
+            },
+        },
+    ];
+    if (data.photos && data.photos.length > 0) {
+        blocks.push({
+            type: "section",
+            text: {
+                type: "mrkdwn",
+                text: `*📷 현장 사진 (${data.photos.length}장)*`,
+            },
+        });
+        for (const photo of data.photos) {
+            const photoUrl = typeof photo === 'string' ? photo : photo.url;
+            const photoLabel = typeof photo === 'string' ? '현장 사진' : (photo.label || '현장 사진');
+            if (photoUrl) {
+                blocks.push({
+                    type: "image",
+                    image_url: photoUrl,
+                    alt_text: photoLabel,
+                    title: { type: "plain_text", text: photoLabel, emoji: true },
+                });
+            }
+        }
+    }
+    const response = await fetch(slackWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blocks }),
+    });
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Slack API error: ${response.status} ${errorText}`);
+    }
+};
 /**
  * 보고서 데이터가 안정적으로 전달되도록 보장하는 클린 HTML 템플릿
  */
@@ -33,7 +104,7 @@ const generateEmailTemplate = (data) => {
         <tr>
           <td align="center" style="padding: 40px 10px;">
             <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-              
+
               <!-- Header -->
               <tr>
                 <td align="center" style="padding: 40px; background-color: #4f46e5; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);">
@@ -45,7 +116,7 @@ const generateEmailTemplate = (data) => {
               <!-- Main Content -->
               <tr>
                 <td style="padding: 40px;">
-                  
+
                   <!-- Boss Summary Card -->
                   <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 30px; background-color: #f8fafc; border-radius: 15px; border-left: 5px solid #4f46e5;">
                     <tr>
@@ -111,13 +182,12 @@ const generateEmailTemplate = (data) => {
     </html>
   `;
 };
-exports.sendReportEmail = functions.region('asia-northeast3').firestore
+exports.sendReportNotification = functions.region('asia-northeast3').firestore
     .document('reports/{reportId}')
     .onCreate(async (snap, context) => {
     const data = snap.data();
     if (!data)
         return null;
-    // AI 요약이 없거나 로직이 복잡해질 경우를 대비한 '클린 안정성' 설계
     const htmlContent = generateEmailTemplate(data);
     const mailOptions = {
         from: `"Saladoop Report" <${gmailEmail}>`,
@@ -125,12 +195,22 @@ exports.sendReportEmail = functions.region('asia-northeast3').firestore
         subject: `[${data.reporter_name || '신규'}] ${data.date || ''} 보고서 도착`,
         html: htmlContent,
     };
-    try {
-        await mailTransport.sendMail(mailOptions);
+    // 이메일 + 슬랙 동시 발송
+    const results = await Promise.allSettled([
+        mailTransport.sendMail(mailOptions),
+        sendSlackNotification(data),
+    ]);
+    if (results[0].status === 'fulfilled') {
         functions.logger.log('Email sent successfully to:', bossEmail);
     }
-    catch (error) {
-        functions.logger.error('Error sending email:', error);
+    else {
+        functions.logger.error('Error sending email:', results[0].reason);
+    }
+    if (results[1].status === 'fulfilled') {
+        functions.logger.log('Slack notification sent successfully');
+    }
+    else {
+        functions.logger.error('Error sending Slack notification:', results[1].reason);
     }
     return null;
 });

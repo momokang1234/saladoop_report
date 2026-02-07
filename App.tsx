@@ -51,18 +51,18 @@ const CHECKLIST_ITEMS: Record<ShiftStage, { id: string; label: string }[]> = {
   ],
 };
 
-const PHOTO_GUIDES: Record<ShiftStage, string[]> = {
+const PHOTO_GUIDES: Record<ShiftStage, { label: string; desc: string }[]> = {
   [ShiftStage.OPEN]: [
-    '📸 테이블 전체 + 식수 Self-zone'
+    { label: '테이블 전체 + 식수 Self-zone', desc: '매장 테이블 배치 상태와 식수대 셀프존을 한 컷에 촬영' },
   ],
   [ShiftStage.MIDDLE]: [
-    '📸 메인 유리문 냉장고',
-    '📸 토핑 냉장고 내부 (우측 문 2개 개방)',
-    '📸 업무 리스트 체크 완료본'
+    { label: '메인 유리문 냉장고', desc: '유리문 냉장고 내부 재고 상태가 보이도록 촬영' },
+    { label: '토핑 냉장고 내부', desc: '우측 문 2개를 열고 토핑 배치 상태 촬영' },
+    { label: '업무 리스트 체크 완료본', desc: '체크 완료된 업무 리스트를 정면에서 촬영' },
   ],
   [ShiftStage.CLOSE]: [
-    '📸 가스 차단기 잠금 (초록불)',
-    '📸 토핑 냉장고 작업대 전체'
+    { label: '가스 차단기 잠금', desc: '초록불 상태의 가스 차단기를 가까이서 촬영' },
+    { label: '토핑 냉장고 작업대 전체', desc: '정리 완료된 작업대 전체가 보이도록 촬영' },
   ]
 };
 
@@ -83,11 +83,13 @@ const compressImage = (base64Str: string): Promise<string> => {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, 0, 0, width, height);
+        if (!ctx) {
+          resolve(base64Str);
+          return;
         }
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
         const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
         resolve(compressedDataUrl);
       } catch (error) {
@@ -108,7 +110,7 @@ const App: React.FC = () => {
     issues: '',
     summaryForBoss: '',
     checklist: {},
-    photos: [],
+    photos: Array(PHOTO_GUIDES[ShiftStage.OPEN].length).fill(''),
   });
   const [viewMode, setViewMode] = useState<ViewMode>('auth');
   const [reports, setReports] = useState<ReportSchema[]>([]);
@@ -171,30 +173,30 @@ const App: React.FC = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const fileReaderResult = reader.result;
-          if (typeof fileReaderResult !== 'string') {
-            console.error('FileReader result is not a string:', typeof fileReaderResult);
-            alert('이미지 처리 중 오류가 발생했습니다. 다시 시도해 주세요.');
-            return;
-          }
-
-          const compressed = await compressImage(fileReaderResult);
-          setFormData(prev => {
-            const newPhotos = [...prev.photos];
-            newPhotos[index] = compressed;
-            return { ...prev, photos: newPhotos };
-          });
-        } catch (error) {
-          console.error('Error processing image:', error);
-          alert('이미지 처리 중 오류가 발생했습니다. 다른 이미지를 시도해 주세요.');
+    if (!file) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const fileReaderResult = reader.result;
+        if (typeof fileReaderResult !== 'string') {
+          console.error('FileReader result is not a string:', typeof fileReaderResult);
+          alert('이미지 처리 중 오류가 발생했습니다. 다시 시도해 주세요.');
+          return;
         }
-      };
-      reader.readAsDataURL(file);
-    }
+
+        const compressed = await compressImage(fileReaderResult);
+        setFormData(prev => {
+          const newPhotos = [...prev.photos];
+          newPhotos[index] = compressed;
+          return { ...prev, photos: newPhotos };
+        });
+      } catch (error) {
+        console.error('Error processing image:', error);
+        alert('이미지 처리 중 오류가 발생했습니다. 다른 이미지를 시도해 주세요.');
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -217,7 +219,7 @@ const App: React.FC = () => {
         const url = await getDownloadURL(storageRef);
         photoData.push({
           url,
-          label: PHOTO_GUIDES[formData.shiftStage][idx] || `사진 ${idx + 1}`
+          label: PHOTO_GUIDES[formData.shiftStage][idx]?.label || `사진 ${idx + 1}`
         });
       }
 
@@ -230,6 +232,10 @@ const App: React.FC = () => {
         summary_for_boss: formData.summaryForBoss,
         issues: formData.issues,
         checklist: formData.checklist,
+        checklist_details: CHECKLIST_ITEMS[formData.shiftStage].map(item => ({
+          label: item.label,
+          checked: !!formData.checklist[item.id]
+        })),
         photos: photoData,
         has_photo: photoData.length > 0,
         date: now.toLocaleDateString('ko-KR'),
@@ -247,7 +253,7 @@ const App: React.FC = () => {
 
       setViewMode('success');
       fetchHistory(user.uid);
-      setFormData(prev => ({ ...prev, photos: [], issues: '', summaryForBoss: '', checklist: {} }));
+      setFormData(prev => ({ ...prev, photos: Array(PHOTO_GUIDES[prev.shiftStage].length).fill(''), issues: '', summaryForBoss: '', checklist: {} }));
     } catch (err) {
       console.error(err);
       alert("제출 중 오류가 발생했습니다.");
@@ -365,7 +371,7 @@ const App: React.FC = () => {
                 <section className="space-y-3">
                    <div className="flex items-center gap-2 px-2">
                      <User className="w-4 h-4 text-slate-400" />
-                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Phase</label>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">근무 타임</label>
                    </div>
                    <div className="glass-panel p-2 rounded-[2rem] flex gap-1">
                       {Object.values(ShiftStage).map((stage) => {
@@ -374,7 +380,10 @@ const App: React.FC = () => {
                           <button
                             key={stage}
                             type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, shiftStage: stage, checklist: {}, photos: [] }))}
+                            onClick={() => {
+                              fileInputRefs.current.forEach(input => { if (input) input.value = ''; });
+                              setFormData(prev => ({ ...prev, shiftStage: stage, checklist: {}, photos: Array(PHOTO_GUIDES[stage].length).fill('') }));
+                            }}
                             className={`flex-1 py-4 rounded-[1.5rem] text-xs font-black transition-all relative ${isSelected ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}
                           >
                             {isSelected && (
@@ -392,38 +401,57 @@ const App: React.FC = () => {
                 </section>
 
                 <section className="space-y-3">
-                  <div className="flex items-center gap-2 px-2">
-                    <Camera className="w-4 h-4 text-slate-400" />
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Visual Evidence</label>
+                  <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-slate-400" />
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">사진 첨부</label>
+                    </div>
+                    <span className="text-[10px] font-bold text-indigo-400">
+                      {formData.photos.filter(Boolean).length} / {PHOTO_GUIDES[formData.shiftStage].length}장
+                    </span>
                   </div>
-                  <div className={`grid grid-cols-1 gap-3`}>
-                    {PHOTO_GUIDES[formData.shiftStage].map((guideLabel, i) => (
+                  <div className="grid grid-cols-1 gap-4">
+                    {PHOTO_GUIDES[formData.shiftStage].map((guide, i) => (
                       <motion.div
-                        key={i}
-                        whileHover={{ scale: 1.02 }}
+                        key={`${formData.shiftStage}-${i}`}
+                        whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => fileInputRefs.current[i]?.click()}
-                        className="group relative aspect-video rounded-[1.5rem] bg-white border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all hover:border-indigo-400 hover:bg-indigo-50/10 shadow-sm"
+                        className="group relative rounded-[1.5rem] bg-white border-2 border-dashed border-slate-200 cursor-pointer overflow-hidden transition-all hover:border-indigo-400 shadow-sm"
                       >
                         {formData.photos[i] ? (
-                          <>
+                          <div className="relative aspect-video">
                             <img src={formData.photos[i]} alt="Preview" className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                               <div className="bg-white/90 p-2 rounded-full shadow-lg backdrop-blur-md">
+                               <div className="bg-white/90 p-2.5 rounded-full shadow-lg backdrop-blur-md">
                                  <Camera className="w-5 h-5 text-indigo-600" />
                                </div>
                             </div>
-                            <div className="absolute bottom-0 inset-x-0 bg-black/50 p-2 text-center">
-                              <span className="text-[10px] text-white font-bold">{guideLabel}</span>
+                            <div className="absolute top-3 left-3">
+                              <span className="bg-indigo-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-md">
+                                {i + 1}/{PHOTO_GUIDES[formData.shiftStage].length}
+                              </span>
                             </div>
-                          </>
+                            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-4 pt-8">
+                              <span className="text-xs text-white font-bold block">{guide.label}</span>
+                            </div>
+                          </div>
                         ) : (
-                          <>
-                            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                          <div className="p-6 flex items-start gap-4">
+                            <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center group-hover:bg-indigo-50 group-hover:border-indigo-100 transition-colors">
                               <Camera className="w-6 h-6 text-slate-300 group-hover:text-indigo-400 transition-colors" />
                             </div>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider group-hover:text-indigo-400 transition-colors text-center px-4">{guideLabel}</span>
-                          </>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-2 py-0.5 rounded-md group-hover:bg-indigo-100 group-hover:text-indigo-500 transition-colors">
+                                  {i + 1}/{PHOTO_GUIDES[formData.shiftStage].length}
+                                </span>
+                              </div>
+                              <p className="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors mb-1">{guide.label}</p>
+                              <p className="text-[11px] text-slate-400 leading-relaxed">{guide.desc}</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0 mt-1 group-hover:text-indigo-400 transition-colors" />
+                          </div>
                         )}
                         <input type="file" ref={el => { fileInputRefs.current[i] = el; }} onChange={(e) => handleFileChange(e, i)} accept="image/*" capture="environment" className="hidden" />
                       </motion.div>
@@ -432,9 +460,14 @@ const App: React.FC = () => {
                 </section>
 
                 <section className="space-y-3">
-                  <div className="flex items-center gap-2 px-2">
-                    <CheckCircle2 className="w-4 h-4 text-slate-400" />
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Check</label>
+                  <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-slate-400" />
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">체크리스트</label>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-400">
+                      {Object.values(formData.checklist).filter(Boolean).length} / {CHECKLIST_ITEMS[formData.shiftStage].length}
+                    </span>
                   </div>
                   <div className="grid gap-2">
                     {CHECKLIST_ITEMS[formData.shiftStage].map((item) => {
@@ -475,26 +508,34 @@ const App: React.FC = () => {
                 <section className="space-y-3">
                   <div className="flex items-center gap-2 px-2">
                     <AlertCircle className="w-4 h-4 text-slate-400" />
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Summary</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">보고 내용</label>
                   </div>
                   <div className="glass-panel p-2 rounded-[2rem] space-y-2">
                     <div className="relative group">
+                      <div className="px-6 pt-3 pb-0">
+                        <span className="text-[10px] font-bold text-indigo-400">사장님 보고 요약 *</span>
+                      </div>
                        <input
                         name="summaryForBoss"
                         value={formData.summaryForBoss}
                         onChange={handleInputChange}
-                        placeholder="Executive Summary"
-                        className="w-full bg-slate-50/50 border-none focus:ring-2 focus:ring-indigo-500/20 rounded-2xl px-6 py-4 text-sm font-bold outline-none transition-all placeholder:text-slate-300"
+                        placeholder="오늘 근무 중 핵심 보고 사항을 작성하세요"
+                        className="w-full bg-slate-50/50 border-none focus:ring-2 focus:ring-indigo-500/20 rounded-2xl px-6 py-3 text-sm font-bold outline-none transition-all placeholder:text-slate-300"
                       />
                     </div>
-                    <textarea
-                      name="issues"
-                      value={formData.issues}
-                      onChange={handleInputChange}
-                      rows={3}
-                      placeholder="Additional Notes / Issues"
-                      className="w-full bg-slate-50/50 border-none focus:ring-2 focus:ring-indigo-500/20 rounded-2xl px-6 py-4 text-sm font-bold outline-none resize-none transition-all placeholder:text-slate-300"
-                    />
+                    <div>
+                      <div className="px-6 pt-2 pb-0">
+                        <span className="text-[10px] font-bold text-slate-400">특이사항 / 전달사항</span>
+                      </div>
+                      <textarea
+                        name="issues"
+                        value={formData.issues}
+                        onChange={handleInputChange}
+                        rows={3}
+                        placeholder="특이사항이나 다음 타임에 전달할 내용을 작성하세요"
+                        className="w-full bg-slate-50/50 border-none focus:ring-2 focus:ring-indigo-500/20 rounded-2xl px-6 py-3 text-sm font-bold outline-none resize-none transition-all placeholder:text-slate-300"
+                      />
+                    </div>
                   </div>
                 </section>
 
@@ -554,7 +595,7 @@ const App: React.FC = () => {
                 className="space-y-6 pb-12"
               >
                 <div className="glass-panel p-6 rounded-[2rem] flex flex-col items-center gap-3 sticky top-0 z-20 backdrop-blur-xl">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date Selection</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">날짜 선택</label>
                   <input
                     type="date"
                     value={selectedDate}
@@ -563,44 +604,90 @@ const App: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-5">
                   {[ShiftStage.OPEN, ShiftStage.MIDDLE, ShiftStage.CLOSE].map((stage) => {
                     const stageReports = reports.filter(r => {
                       const reportDate = r.date.replace(/\. /g, '-').replace('.', '');
                       return reportDate === selectedDate && r.shift_stage === stage;
                     });
 
+                    const stageColor = stage === ShiftStage.OPEN
+                      ? { dot: 'bg-amber-400', badge: 'bg-amber-50 text-amber-600 border-amber-100' }
+                      : stage === ShiftStage.MIDDLE
+                        ? { dot: 'bg-blue-400', badge: 'bg-blue-50 text-blue-600 border-blue-100' }
+                        : { dot: 'bg-violet-400', badge: 'bg-violet-50 text-violet-600 border-violet-100' };
+
                     return (
-                      <div key={stage} className="space-y-2">
-                        <div className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                          {stage}
+                      <div key={stage} className="space-y-2.5">
+                        <div className="px-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${stageColor.dot}`} />
+                            <span className="text-xs font-black text-slate-700">{stage}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-300">
+                            {stageReports.length}건
+                          </span>
                         </div>
-                        
+
                         {stageReports.length > 0 ? (
-                          stageReports.map((report) => (
-                            <motion.div
-                              key={report.id}
-                              whileHover={{ scale: 1.02, y: -2 }}
-                              className="bg-white/80 p-5 rounded-[1.5rem] shadow-sm border border-slate-100 cursor-pointer relative overflow-hidden group"
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <h4 className="text-sm font-black text-slate-900">{report.reporter_name}</h4>
-                                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">{report.timestamp}</span>
-                              </div>
-                              <p className="text-xs text-slate-600 font-medium leading-relaxed border-l-2 border-indigo-200 pl-3">
-                                {report.summary_for_boss}
-                              </p>
-                              {report.has_photo && (
-                                <div className="absolute bottom-4 right-4 opacity-50">
-                                  <Camera className="w-4 h-4 text-slate-400" />
+                          stageReports.map((report) => {
+                            const checklistKeys = report.checklist ? Object.keys(report.checklist) : [];
+                            const checkedCount = checklistKeys.filter(k => report.checklist[k]).length;
+                            const totalChecklist = checklistKeys.length;
+                            const photoCount = Array.isArray(report.photos) ? report.photos.length : 0;
+
+                            return (
+                              <motion.div
+                                key={report.id}
+                                whileHover={{ scale: 1.01, y: -1 }}
+                                className="bg-white/80 p-5 rounded-[1.5rem] shadow-sm border border-slate-100 relative overflow-hidden group"
+                              >
+                                <div className="flex justify-between items-center mb-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <h4 className="text-sm font-black text-slate-900">{report.reporter_name}</h4>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${stageColor.badge}`}>
+                                      {report.busy_level}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg">{report.timestamp}</span>
                                 </div>
-                              )}
-                            </motion.div>
-                          ))
+
+                                <div className="bg-slate-50/80 rounded-xl p-3.5 mb-3">
+                                  <p className="text-xs text-slate-700 font-bold leading-relaxed">
+                                    {report.summary_for_boss}
+                                  </p>
+                                </div>
+
+                                {report.issues && (
+                                  <div className="bg-amber-50/60 rounded-xl p-3 mb-3 border border-amber-100/50">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <AlertCircle className="w-3 h-3 text-amber-500" />
+                                      <span className="text-[10px] font-black text-amber-600">특이사항</span>
+                                    </div>
+                                    <p className="text-[11px] text-amber-700/80 font-medium leading-relaxed">{report.issues}</p>
+                                  </div>
+                                )}
+
+                                <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+                                  {totalChecklist > 0 && (
+                                    <div className="flex items-center gap-1.5">
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>체크 {checkedCount}/{totalChecklist}</span>
+                                    </div>
+                                  )}
+                                  {photoCount > 0 && (
+                                    <div className="flex items-center gap-1.5">
+                                      <Camera className="w-3.5 h-3.5" />
+                                      <span>사진 {photoCount}장</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            );
+                          })
                         ) : (
                           <div className="h-20 rounded-[1.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center bg-slate-50/50">
-                            <span className="text-[10px] text-slate-300 font-bold">No Data</span>
+                            <span className="text-[10px] text-slate-300 font-bold">보고 없음</span>
                           </div>
                         )}
                       </div>

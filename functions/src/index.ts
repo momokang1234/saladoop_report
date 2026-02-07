@@ -43,7 +43,7 @@ const generateEmailTemplate = (data: any) => {
         <tr>
           <td align="center" style="padding: 40px 10px;">
             <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-              
+
               <!-- Header -->
               <tr>
                 <td align="center" style="padding: 40px; background-color: #4f46e5; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);">
@@ -55,7 +55,7 @@ const generateEmailTemplate = (data: any) => {
               <!-- Main Content -->
               <tr>
                 <td style="padding: 40px;">
-                  
+
                   <!-- Boss Summary Card -->
                   <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 30px; background-color: #f8fafc; border-radius: 15px; border-left: 5px solid #4f46e5;">
                     <tr>
@@ -128,7 +128,6 @@ export const sendReportEmail = functions.region('asia-northeast3').firestore
     const data = snap.data();
     if (!data) return null;
 
-    // AI 요약이 없거나 로직이 복잡해질 경우를 대비한 '클린 안정성' 설계
     const htmlContent = generateEmailTemplate(data);
 
     const mailOptions = {
