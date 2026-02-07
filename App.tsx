@@ -232,6 +232,10 @@ const App: React.FC = () => {
         summary_for_boss: formData.summaryForBoss,
         issues: formData.issues,
         checklist: formData.checklist,
+        checklist_details: CHECKLIST_ITEMS[formData.shiftStage].map(item => ({
+          label: item.label,
+          checked: !!formData.checklist[item.id]
+        })),
         photos: photoData,
         has_photo: photoData.length > 0,
         date: now.toLocaleDateString('ko-KR'),
