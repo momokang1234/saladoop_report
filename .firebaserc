@@ -1,5 +1,7 @@
 {
-  "projects": {},
+  "projects": {
+    "default": "saladoopreport-2026"
+  },
   "targets": {},
   "etags": {}
 }
