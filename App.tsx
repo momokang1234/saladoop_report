@@ -241,6 +241,12 @@ const App: React.FC = () => {
 
       await addDoc(collection(db, "reports"), reportData);
 
+      fetch('/api/send-slack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reportData)
+      }).catch(err => console.error("Slack Notification Error:", err));
+
       setViewMode('success');
       fetchHistory(user.uid);
       setFormData(prev => ({ ...prev, photos: Array(PHOTO_GUIDES[prev.shiftStage].length).fill(''), issues: '', summaryForBoss: '', checklist: {} }));

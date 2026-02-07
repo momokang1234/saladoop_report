@@ -28,7 +28,6 @@ jobs:
           GMAIL_EMAIL=${{ secrets.GMAIL_EMAIL }}
           GMAIL_PASSWORD=${{ secrets.GMAIL_PASSWORD }}
           BOSS_EMAIL=${{ secrets.BOSS_EMAIL }}
-          SLACK_WEBHOOK_URL=${{ secrets.SLACK_WEBHOOK_URL }}
           EOF
 
       - name: Build functions

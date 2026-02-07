@@ -7,7 +7,6 @@ admin.initializeApp();
 const gmailEmail = process.env.GMAIL_EMAIL;
 const gmailPassword = process.env.GMAIL_PASSWORD;
 const bossEmail = process.env.BOSS_EMAIL || "daviidkang@gmail.com";
-const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
 
 const mailTransport = nodemailer.createTransport({
   service: 'gmail',
@@ -16,82 +15,6 @@ const mailTransport = nodemailer.createTransport({
     pass: gmailPassword,
   },
 });
-
-/**
- * Slack Block Kit 메시지 생성
- */
-const sendSlackNotification = async (data: any) => {
-  if (!slackWebhookUrl) {
-    functions.logger.warn('SLACK_WEBHOOK_URL not configured, skipping Slack notification');
-    return;
-  }
-
-  const blocks: any[] = [
-    {
-      type: "header",
-      text: {
-        type: "plain_text",
-        text: `📝 Saladoop 일일 업무 보고 - ${data.shift_stage || '시간 미정'}`,
-        emoji: true,
-      },
-    },
-    {
-      type: "section",
-      fields: [
-        { type: "mrkdwn", text: `*작성자:*\n${data.reporter_name || '알 수 없음'}` },
-        { type: "mrkdwn", text: `*작성 시간:*\n${data.date} ${data.timestamp}` },
-      ],
-    },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*📢 사장님 한 줄 요약:*\n> ${data.summary_for_boss || '내용 없음'}`,
-      },
-    },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*✅ 특이사항 및 업무 상세:*\n${data.issues || '특이사항 없음'}`,
-      },
-    },
-  ];
-
-  if (data.photos && data.photos.length > 0) {
-    blocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*📷 현장 사진 (${data.photos.length}장)*`,
-      },
-    });
-
-    for (const photo of data.photos) {
-      const photoUrl = typeof photo === 'string' ? photo : photo.url;
-      const photoLabel = typeof photo === 'string' ? '현장 사진' : (photo.label || '현장 사진');
-      if (photoUrl) {
-        blocks.push({
-          type: "image",
-          image_url: photoUrl,
-          alt_text: photoLabel,
-          title: { type: "plain_text", text: photoLabel, emoji: true },
-        });
-      }
-    }
-  }
-
-  const response = await fetch(slackWebhookUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ blocks }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Slack API error: ${response.status} ${errorText}`);
-  }
-};
 
 /**
  * 보고서 데이터가 안정적으로 전달되도록 보장하는 클린 HTML 템플릿
@@ -199,7 +122,7 @@ const generateEmailTemplate = (data: any) => {
   `;
 };
 
-export const sendReportNotification = functions.region('asia-northeast3').firestore
+export const sendReportEmail = functions.region('asia-northeast3').firestore
   .document('reports/{reportId}')
   .onCreate(async (snap, context) => {
     const data = snap.data();
@@ -214,23 +137,11 @@ export const sendReportNotification = functions.region('asia-northeast3').firest
       html: htmlContent,
     };
 
-    // 이메일 + 슬랙 동시 발송
-    const results = await Promise.allSettled([
-      mailTransport.sendMail(mailOptions),
-      sendSlackNotification(data),
-    ]);
-
-    if (results[0].status === 'fulfilled') {
+    try {
+      await mailTransport.sendMail(mailOptions);
       functions.logger.log('Email sent successfully to:', bossEmail);
-    } else {
-      functions.logger.error('Error sending email:', results[0].reason);
+    } catch (error) {
+      functions.logger.error('Error sending email:', error);
     }
-
-    if (results[1].status === 'fulfilled') {
-      functions.logger.log('Slack notification sent successfully');
-    } else {
-      functions.logger.error('Error sending Slack notification:', results[1].reason);
-    }
-
     return null;
   });
