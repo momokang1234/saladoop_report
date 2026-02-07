@@ -113,6 +113,7 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('auth');
   const [reports, setReports] = useState<ReportSchema[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState<number>(0);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -205,6 +206,14 @@ const App: React.FC = () => {
       return;
     }
 
+    // Client-side rate limiting: 30-second cooldown between submissions
+    const now = Date.now();
+    if (now < cooldownUntil) {
+      const remainingSec = Math.ceil((cooldownUntil - now) / 1000);
+      alert(`잠시 후 다시 시도해 주세요. (${remainingSec}초 남음)`);
+      return;
+    }
+
     setIsSending(true);
     try {
       const now = new Date();
@@ -245,6 +254,7 @@ const App: React.FC = () => {
         body: JSON.stringify(reportData)
       }).catch(err => console.error("Slack Notification Error:", err));
 
+      setCooldownUntil(Date.now() + 30 * 1000);
       setViewMode('success');
       fetchHistory(user.uid);
       setFormData(prev => ({ ...prev, photos: [], issues: '', summaryForBoss: '', checklist: {} }));

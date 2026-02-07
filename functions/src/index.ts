@@ -122,11 +122,36 @@ const generateEmailTemplate = (data: any) => {
   `;
 };
 
+// Rate limiting: max 3 emails per user per 10 minutes
+const EMAIL_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const EMAIL_RATE_LIMIT_MAX = 3;
+const emailLog = new Map<string, number[]>();
+
+function isEmailRateLimited(uid: string): boolean {
+  const now = Date.now();
+  const timestamps = emailLog.get(uid) || [];
+  const recent = timestamps.filter(t => now - t < EMAIL_RATE_LIMIT_WINDOW_MS);
+  emailLog.set(uid, recent);
+  if (recent.length >= EMAIL_RATE_LIMIT_MAX) {
+    return true;
+  }
+  recent.push(now);
+  emailLog.set(uid, recent);
+  return false;
+}
+
 export const sendReportEmail = functions.region('asia-northeast3').firestore
   .document('reports/{reportId}')
   .onCreate(async (snap, context) => {
     const data = snap.data();
     if (!data) return null;
+
+    // Rate limiting per user
+    const uid = data.reporter_uid || 'unknown';
+    if (isEmailRateLimited(uid)) {
+      functions.logger.warn(`Rate limited email for user: ${uid}`);
+      return null;
+    }
 
     // AI 요약이 없거나 로직이 복잡해질 경우를 대비한 '클린 안정성' 설계
     const htmlContent = generateEmailTemplate(data);
