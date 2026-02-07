@@ -83,11 +83,13 @@ const compressImage = (base64Str: string): Promise<string> => {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, 0, 0, width, height);
+        if (!ctx) {
+          resolve(base64Str);
+          return;
         }
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
         const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
         resolve(compressedDataUrl);
       } catch (error) {
@@ -108,7 +110,7 @@ const App: React.FC = () => {
     issues: '',
     summaryForBoss: '',
     checklist: {},
-    photos: [],
+    photos: Array(PHOTO_GUIDES[ShiftStage.OPEN].length).fill(''),
   });
   const [viewMode, setViewMode] = useState<ViewMode>('auth');
   const [reports, setReports] = useState<ReportSchema[]>([]);
@@ -171,30 +173,30 @@ const App: React.FC = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const fileReaderResult = reader.result;
-          if (typeof fileReaderResult !== 'string') {
-            console.error('FileReader result is not a string:', typeof fileReaderResult);
-            alert('이미지 처리 중 오류가 발생했습니다. 다시 시도해 주세요.');
-            return;
-          }
-
-          const compressed = await compressImage(fileReaderResult);
-          setFormData(prev => {
-            const newPhotos = [...prev.photos];
-            newPhotos[index] = compressed;
-            return { ...prev, photos: newPhotos };
-          });
-        } catch (error) {
-          console.error('Error processing image:', error);
-          alert('이미지 처리 중 오류가 발생했습니다. 다른 이미지를 시도해 주세요.');
+    if (!file) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const fileReaderResult = reader.result;
+        if (typeof fileReaderResult !== 'string') {
+          console.error('FileReader result is not a string:', typeof fileReaderResult);
+          alert('이미지 처리 중 오류가 발생했습니다. 다시 시도해 주세요.');
+          return;
         }
-      };
-      reader.readAsDataURL(file);
-    }
+
+        const compressed = await compressImage(fileReaderResult);
+        setFormData(prev => {
+          const newPhotos = [...prev.photos];
+          newPhotos[index] = compressed;
+          return { ...prev, photos: newPhotos };
+        });
+      } catch (error) {
+        console.error('Error processing image:', error);
+        alert('이미지 처리 중 오류가 발생했습니다. 다른 이미지를 시도해 주세요.');
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -247,7 +249,7 @@ const App: React.FC = () => {
 
       setViewMode('success');
       fetchHistory(user.uid);
-      setFormData(prev => ({ ...prev, photos: [], issues: '', summaryForBoss: '', checklist: {} }));
+      setFormData(prev => ({ ...prev, photos: Array(PHOTO_GUIDES[prev.shiftStage].length).fill(''), issues: '', summaryForBoss: '', checklist: {} }));
     } catch (err) {
       console.error(err);
       alert("제출 중 오류가 발생했습니다.");
@@ -374,7 +376,10 @@ const App: React.FC = () => {
                           <button
                             key={stage}
                             type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, shiftStage: stage, checklist: {}, photos: [] }))}
+                            onClick={() => {
+                              fileInputRefs.current.forEach(input => { if (input) input.value = ''; });
+                              setFormData(prev => ({ ...prev, shiftStage: stage, checklist: {}, photos: Array(PHOTO_GUIDES[stage].length).fill('') }));
+                            }}
                             className={`flex-1 py-4 rounded-[1.5rem] text-xs font-black transition-all relative ${isSelected ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}
                           >
                             {isSelected && (
